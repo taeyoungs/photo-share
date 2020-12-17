@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { withRouter } from 'react-router-dom';
-import { gql } from 'apollo-boost';
-import { useMutation } from 'react-apollo';
+import { useHistory } from 'react-router-dom';
+import { useMutation, useQuery, useApolloClient, gql } from '@apollo/client';
 import { ROOT_QUERY } from './App';
+// import { useQuery, useMutation } from '@apollo/client';
 
 const GITHUB_AUTH_MUTATION = gql`
     mutation githubAuth($code: String!) {
@@ -12,9 +12,10 @@ const GITHUB_AUTH_MUTATION = gql`
     }
 `;
 
-const AuthorizedUser = (props) => {
+const AuthorizedUser = () => {
     const [signingIn, setSigningIn] = useState(false);
-    const { history } = props;
+    const history = useHistory();
+    const client = useApolloClient();
     const [githubAuthMutation] = useMutation(GITHUB_AUTH_MUTATION, {
         update(cache, { data }) {
             localStorage.setItem('token', data.githubAuth.token);
@@ -23,6 +24,8 @@ const AuthorizedUser = (props) => {
         },
         refetchQueries: [{ query: ROOT_QUERY }],
     });
+    const { loading, data } = useQuery(ROOT_QUERY);
+
     useEffect(() => {
         if (window.location.search.match(/code=/)) {
             setSigningIn(true);
@@ -36,11 +39,38 @@ const AuthorizedUser = (props) => {
         window.location = `https://github.com/login/oauth/authorize?client_id=${clientID}&scope=user`;
     };
 
-    return (
-        <button onClick={requestCode} disabled={signingIn}>
-            깃허브로 로그인
-        </button>
-    );
+    const logout = () => {
+        localStorage.removeItem('token');
+        client.writeQuery({ query: ROOT_QUERY, data: { me: null } });
+    };
+
+    const CurrentUser = ({ name, avatar, logout }) => {
+        return (
+            <div>
+                <img src={avatar} width={48} height={48} alt="" />
+                <h1>{name}</h1>
+                <button onClick={logout}>로그아웃</button>
+            </div>
+        );
+    };
+
+    const Me = () => {
+        return (
+            <>
+                {loading ? (
+                    <p>loading ...</p>
+                ) : data && data.me ? (
+                    <CurrentUser {...data.me} logout={logout} />
+                ) : (
+                    <button onClick={requestCode} disabled={signingIn}>
+                        깃허브로 로그인
+                    </button>
+                )}
+            </>
+        );
+    };
+
+    return <Me />;
 };
 
-export default withRouter(AuthorizedUser);
+export default AuthorizedUser;

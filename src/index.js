@@ -1,14 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './App';
-import ApolloClient from 'apollo-boost';
-import { ApolloProvider } from 'react-apollo';
 
-const client = new ApolloClient({ uri: 'http://localhost:4000/graphql' });
+// if (localStorage['apollo3-cache-persist']) {
+//     let cacheData = JSON.parse(localStorage['apollo3-cache-persist']);
+//     cache.restore(cacheData);
+// }
 
-ReactDOM.render(
-    <ApolloProvider client={client}>
-        <App />
-    </ApolloProvider>,
-    document.getElementById('root'),
-);
+ReactDOM.render(<App />, document.getElementById('root'));
