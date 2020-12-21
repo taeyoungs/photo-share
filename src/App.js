@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import User from './Users';
 import { BrowserRouter } from 'react-router-dom';
-import { HttpLink, ApolloClient, InMemoryCache, ApolloProvider, gql, ApolloLink, concat } from '@apollo/client';
+import { HttpLink, ApolloClient, InMemoryCache, ApolloProvider, gql, ApolloLink, split } from '@apollo/client';
+import { WebSocketLink } from '@apollo/client/link/ws';
+import { getMainDefinition } from '@apollo/client/utilities';
 import { usePersistCache } from './hooks';
 import AuthorizedUser from './AuthorizedUser';
 
@@ -37,6 +39,20 @@ const App = () => {
 
             return forward(operation);
         });
+        const wsLink = new WebSocketLink({
+            uri: `ws://localhost:4000/graphql`,
+            options: { reconnect: true },
+        });
+        const httpAuthLink = authMiddleware.concat(httpLink);
+        const link = split(
+            ({ query }) => {
+                const { kind, operation } = getMainDefinition(query);
+                console.log(kind, operation);
+                return kind === 'OperationDefinition' && operation === 'subscription';
+            },
+            wsLink,
+            httpAuthLink,
+        );
         const cache = new InMemoryCache({
             typePolicies: {
                 Query: {
@@ -52,7 +68,7 @@ const App = () => {
         });
         const client = new ApolloClient({
             cache,
-            link: concat(authMiddleware, httpLink),
+            link,
         });
         callback(cache);
         setClient(client);
